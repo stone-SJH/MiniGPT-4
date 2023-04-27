@@ -5,10 +5,10 @@ model:
   freeze_qformer: True
   max_txt_len: 160
   end_sym: "###"
-  low_resource: True
+  low_resource: False
   prompt_path: "prompts/alignment.txt"
   prompt_template: '###Human: {} ###Assistant: '
-  ckpt: '/path/to/pretrained/ckpt/'
+  ckpt: '/root/gpt4/MiniGPT-4/models/13B/minigpt4/pretrained_minigpt4_13b.pth'
 
 
 datasets:
