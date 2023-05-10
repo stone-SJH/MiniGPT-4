@@ -28,7 +28,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description="API")
     parser.add_argument("--cfg-path", required=True, help="path to configuration file.")
     parser.add_argument("--options", nargs="+", help="xxx")
+    parser.add_argument("--port", required=True, help="xxx")
     args = parser.parse_args()
+    print(args.port)
     return args
 
 # prepare conversation templates and prompt templates
@@ -51,12 +53,16 @@ PROMPT_AssetLabeling = ("This is a picture of a 3D game model. Please generate e
         "4. Tags don't contain \"Game Asset\",  \"Game Model\", \"3D Model\", \"3D Game Model\""
         #"5. The reference name of this asset is {AssetName}, Do not output this reference name as a tag directly. (Optional)"
 )
-print(PROMPT_AssetLabeling)
+
+PROMPT_AssetLabeling_V2 = ("This is a picture of a 3D game model. Please generate 6 tags for this asset according to this image. Pay attention to these constraints of tag:Output \"YahahaTags \" before output the first tag. A Tag may describe only one of the following features: the name of the asset, the color of the asset, the material of the asset, the category of the asset, the usage of the asset, the theme of the asset. Tags don’t contain background. Tags don't contain \"Game Asset\",  \"Game Model\", \"3D Model\", \"3D Game Model\". The output format should be: {YahahaTags: \"tag1\", \"tag2\",\"tag3\", \"tag4\",\"tag5\", \"tag6\"}, No descriptions.")
+print(PROMPT_AssetLabeling_V2)
 
 # initialize models
 print('Initializing Chat')
 api = Flask(__name__)
-cfg = Config(parse_args())
+args = parse_args()
+port = args.port
+cfg = Config(args)
 model_config = cfg.model_cfg
 model_cls = registry.get_model_class(model_config.arch)
 model = model_cls.from_config(model_config).to('cuda:0')
@@ -80,37 +86,64 @@ def conv_with_image():
     
     try:
         content = request.get_json(silent=True)
+    except:
+        resp_data = {"message": "reqbody is required."}
+        response = api.response_class(
+            response=json.dumps(resp_data),
+            status=400,
+            mimetype='application/json'
+            )
+        return repsonse
+    try:
         asset_name = content['name']
         img_url = content['img_url']
         beams = content['nob']
         temperature = content['temperature']
-        human_input = content['prompt']
+        print('Image URL:', img_url)
+        #human_input = content['prompt']
         #print(img_url, beams, temperature)
         #print(human_input)
     except:
-        human_input = PROMPT_AssetLabeling
-
-    # embed image
-    image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
-    # TODO: resize image if needed
-    llm_message = chat.upload_img(image, chat_state, img_list)
-    print(llm_message)
+            resp_data = {"message": "name, img_url, nob, temperature is required in reqbody."}
+            response = api.response_class(
+                response=json.dumps(resp_data),
+                status=400,
+                mimetype='application/json')
+            return repsonse
     
-    # embed text prompts
-    chat.ask(human_input, chat_state)
+    try:
+        human_input = content['prompt']
+    except:
+        human_input = PROMPT_AssetLabeling_V2
 
-    # get result
-    llm_message = chat.answer(conv=chat_state, img_list=img_list, max_new_tokens=1000, num_beams=beams, temperature=temperature)[0]
-
-    print("**********AssetLabels:************")
-    print(llm_message)
-    print("**********************************")
+    try:
+        # embed image
+        image = Image.open(requests.get(img_url, stream=True).raw).convert('RGB')
+        #TODO: resize image if needed
+        llm_message = chat.upload_img(image, chat_state, img_list)
+        print(llm_message)
     
-    resp_data = {"message": llm_message}
-    response = api.response_class(
-        response=json.dumps(resp_data),
-        status=200,
-        mimetype='application/json')
+        # embed text prompts
+        chat.ask(human_input, chat_state)
+
+        # get result
+        llm_message = chat.answer(conv=chat_state, img_list=img_list, max_new_tokens=100, num_beams=beams, temperature=temperature)[0]
+
+        #print("**********AssetLabels:************")
+        print(llm_message)
+        #print("**********************************")
+    
+        resp_data = {"message": llm_message}
+        response = api.response_class(
+            response=json.dumps(resp_data),
+            status=200,
+            mimetype='application/json')
+    except:
+        response = api.response_class(
+            response=json.dump("Failed to generate asset labels."),
+            status=204,
+            mimetype='application/json')
+
     if chat_state is not None:
         chat_state.messages = []
     if img_list is not None:
@@ -118,5 +151,5 @@ def conv_with_image():
     return response
 
 if __name__ == '__main__':
-    server = pywsgi.WSGIServer(('0.0.0.0', 8004), api)
+    server = pywsgi.WSGIServer(('0.0.0.0', int(port)), api)
     server.serve_forever()
