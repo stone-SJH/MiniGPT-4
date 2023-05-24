@@ -13,7 +13,7 @@ model:
   num_query_token: 32
 
   # Vicuna
-  llama_model: "/root/gpt4/MiniGPT-4/models/13B/vicuna/"
+  llama_model: "/root/workspace/vicuna/13b/vicuna/"
 
   # generation configs
   prompt: ""

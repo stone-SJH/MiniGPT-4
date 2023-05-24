@@ -8,7 +8,7 @@ model:
   low_resource: False
   prompt_path: "prompts/alignment.txt"
   prompt_template: '###Human: {} ###Assistant: '
-  ckpt: '/root/gpt4/MiniGPT-4/models/13B/minigpt4/pretrained_minigpt4_13b.pth'
+  ckpt: '/root/workspace/AssetLabeling/models/pretrained_minigpt4_13b.pth'
 
 
 datasets:
