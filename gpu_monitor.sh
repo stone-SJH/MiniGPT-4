@@ -1,6 +1,6 @@
 #!/bin/bash
 
-interval=20
+interval=30
 gpu_memory_cap=75000
 count=0
 sum_utilization=0
@@ -23,8 +23,13 @@ while true; do
 		count=0
 		sum_utilization=0
 		if (($(echo "$average_utilization<10" | bc -l))); then
+
+			response=$(curl --location --request POST 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal' --header 'Content-Type: application/json; charset=utf-8' --data-raw '{"app_id": "cli_a4e729a2653a100c","app_secret": "LdqEmQ1QEICOCiYt05Qa0crETgXF0C2z"}')
+			#tenant_access_token=$(echo "$response" | grep -oP '(?<="tenant_access_token": ")[^"]+')
+			tenant_access_token=$(echo "$response" | jq -r '.tenant_access_token')
+
 			curl --location --request POST 'https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id' \
-				--header 'Authorization: Bearer t-g1045oei2XEETFBC6G77E44VUBI7H7VNJ3KYCPTE' \
+				--header "Authorization: Bearer $tenant_access_token" \
 				--header 'Content-Type: application/json; charset=utf-8' \
 				--data-raw '{
 			    "receive_id": "ou_4c99b9ebf24e96f96c95c14715fb0b40",
@@ -35,8 +40,11 @@ while true; do
 	fi
 
 	if (($(echo "$gpu_memory_usage>$gpu_memory_cap" | bc -l))); then
+		response=$(curl --location --request POST 'https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal' --header 'Content-Type: application/json; charset=utf-8' --data-raw '{"app_id": "cli_a4e729a2653a100c","app_secret": "LdqEmQ1QEICOCiYt05Qa0crETgXF0C2z"}')
+
+		tenant_access_token=$(echo "$response" | jq -r '.tenant_access_token')
 		curl --location --request POST 'https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type=open_id' \
-			--header 'Authorization: Bearer t-g1045oei2XEETFBC6G77E44VUBI7H7VNJ3KYCPTE' \
+			--header "Authorization: Bearer $tenant_access_token" \
 			--header 'Content-Type: application/json; charset=utf-8' \
 			--data-raw '{
 		    "receive_id": "ou_4c99b9ebf24e96f96c95c14715fb0b40",
